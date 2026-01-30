@@ -7,7 +7,7 @@ export interface BegynnOnboardingRef {
 }
 export interface BegynnOnboardingProps {
     placementId: string;
-    uid: string;
+    isPreview?: boolean;
     baseUrl?: string;
     containerStyle?: ViewStyle;
     webViewProps?: Omit<WebViewProps, 'source' | 'onMessage'>;

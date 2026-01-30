@@ -1,15 +1,30 @@
-import React, { forwardRef, useCallback, useImperativeHandle, useRef, } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { getOrCreateUID } from './uid';
 const DEFAULT_BASE_URL = 'https://begynn.com';
-export const BegynnOnboarding = forwardRef(({ placementId, uid, baseUrl = DEFAULT_BASE_URL, containerStyle, webViewProps, renderLoading, debug = false, onReady, onStart, onComplete, onExit, onScreenView, onScreenLeave, onNavigationBack, onButtonClick, onChoiceSelect, onChoiceDeselect, onEvent, onError, }, ref) => {
+export const BegynnOnboarding = forwardRef(({ placementId, isPreview = false, baseUrl = DEFAULT_BASE_URL, containerStyle, webViewProps, renderLoading, debug = false, onReady, onStart, onComplete, onExit, onScreenView, onScreenLeave, onNavigationBack, onButtonClick, onChoiceSelect, onChoiceDeselect, onEvent, onError, }, ref) => {
     const webViewRef = useRef(null);
+    const [resolvedUid, setResolvedUid] = useState(isPreview ? "preview" : null);
+    useEffect(() => {
+        if (isPreview) {
+            setResolvedUid("preview");
+            return;
+        }
+        getOrCreateUID().then(setResolvedUid);
+    }, [isPreview]);
     useImperativeHandle(ref, () => ({
         reload: () => {
             webViewRef.current?.reload();
         },
     }));
-    const url = `${baseUrl}/render/${encodeURIComponent(placementId)}?uid=${encodeURIComponent(uid)}`;
+    if (!resolvedUid) {
+        if (renderLoading) {
+            return <View style={[styles.container, containerStyle]}>{renderLoading()}</View>;
+        }
+        return <View style={[styles.container, containerStyle]}/>;
+    }
+    const url = `${baseUrl}/render/${encodeURIComponent(placementId)}?uid=${encodeURIComponent(resolvedUid)}`;
     const handleMessage = useCallback((event) => {
         try {
             const data = JSON.parse(event.nativeEvent.data);

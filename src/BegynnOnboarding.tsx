@@ -1,8 +1,10 @@
 import React, {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import { WebView, WebViewMessageEvent, WebViewProps } from 'react-native-webview';
@@ -21,6 +23,7 @@ import {
   SDKEvent,
   SDKMessage,
 } from './types';
+import { getOrCreateUID } from './uid';
 
 const DEFAULT_BASE_URL = 'https://begynn.com';
 
@@ -30,7 +33,7 @@ export interface BegynnOnboardingRef {
 
 export interface BegynnOnboardingProps {
   placementId: string;
-  uid: string;
+  isPreview?: boolean;
   baseUrl?: string;
   containerStyle?: ViewStyle;
   webViewProps?: Omit<WebViewProps, 'source' | 'onMessage'>;
@@ -57,7 +60,7 @@ export const BegynnOnboarding = forwardRef<
   (
     {
       placementId,
-      uid,
+      isPreview = false,
       baseUrl = DEFAULT_BASE_URL,
       containerStyle,
       webViewProps,
@@ -79,6 +82,16 @@ export const BegynnOnboarding = forwardRef<
     ref
   ) => {
     const webViewRef = useRef<WebView>(null);
+    const [resolvedUid, setResolvedUid] = useState<string | null>(isPreview ? "preview" : null);
+
+    useEffect(() => {
+      if (isPreview) {
+        setResolvedUid("preview");
+        return;
+      }
+
+      getOrCreateUID().then(setResolvedUid);
+    }, [isPreview]);
 
     useImperativeHandle(ref, () => ({
       reload: () => {
@@ -86,7 +99,14 @@ export const BegynnOnboarding = forwardRef<
       },
     }));
 
-    const url = `${baseUrl}/render/${encodeURIComponent(placementId)}?uid=${encodeURIComponent(uid)}`;
+    if (!resolvedUid) {
+      if (renderLoading) {
+        return <View style={[styles.container, containerStyle]}>{renderLoading()}</View>;
+      }
+      return <View style={[styles.container, containerStyle]} />;
+    }
+
+    const url = `${baseUrl}/render/${encodeURIComponent(placementId)}?uid=${encodeURIComponent(resolvedUid)}`;
 
     const handleMessage = useCallback(
       (event: WebViewMessageEvent) => {
